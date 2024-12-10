@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, redirect, url_for, render_template
+from flask import Flask, request, jsonify, render_template
 import openai
 import faiss
 import numpy as np
@@ -21,14 +21,14 @@ logging.info(f"OPENAI_API_KEY loaded: {'Yes' if openai_api_key else 'No'}")
 if not openai_api_key:
     raise ValueError("Brak klucza API OpenAI. Ustaw zmienną środowiskową OPENAI_API_KEY.")
 
-# Ustawienie klucza API dla biblioteki OpenAI
-openai.api_key = openai_api_key
+# Inicjalizacja klienta OpenAI
+client = openai.OpenAI(api_key=openai_api_key)
 
 app = Flask(__name__)
 
 def get_embeddings(text, model="text-embedding-ada-002"):
     try:
-        response = openai.Embedding.create(
+        response = client.embeddings.create(
             input=[text],
             model=model
         )
@@ -123,7 +123,7 @@ def chat():
     logging.info(f"Tworzenie promptu dla modelu: {prompt_text[:100]}...")  # Logowanie pierwszych 100 znaków promptu
 
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",  # Możesz dostosować model
             messages=[
                 {
@@ -151,7 +151,7 @@ def chat():
 @app.route('/test', methods=['GET'])
 def test():
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",  # Możesz dostosować model
             messages=[
                 {
