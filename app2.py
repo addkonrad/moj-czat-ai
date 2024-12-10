@@ -1,20 +1,12 @@
 from flask import Flask, request, jsonify
-from openai import OpenAI
+import openai
 import faiss
 import numpy as np
 import os
 import logging
-from dotenv import load_dotenv
 
 # Konfiguracja logowania
 logging.basicConfig(level=logging.INFO)
-
-# Załaduj zmienne środowiskowe z pliku key.env
-dotenv_path = os.path.join(os.path.dirname(__file__), 'key.env')
-if not os.path.exists(dotenv_path):
-    raise FileNotFoundError(f"Plik {dotenv_path} nie istnieje. Upewnij się, że plik key.env znajduje się w głównym katalogu projektu.")
-
-load_dotenv(dotenv_path)
 
 # Pobierz klucz API OpenAI z zmiennej środowiskowej
 openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -23,20 +15,20 @@ openai_api_key = os.getenv("OPENAI_API_KEY")
 logging.info(f"OPENAI_API_KEY loaded: {'Yes' if openai_api_key else 'No'}")
 
 if not openai_api_key:
-    raise ValueError("Brak klucza API OpenAI. Ustaw zmienną środowiskową OPENAI_API_KEY w pliku key.env.")
+    raise ValueError("Brak klucza API OpenAI. Ustaw zmienną środowiskową OPENAI_API_KEY na Heroku.")
 
 # Inicjalizacja klienta OpenAI
-client = OpenAI(api_key=openai_api_key)
+openai.api_key = openai_api_key
 
 app = Flask(__name__)
 
 def get_embeddings(text, model="text-embedding-ada-002"):
     try:
-        response = client.embeddings.create(
+        response = openai.Embedding.create(
             input=[text],
             model=model
         )
-        return response.data[0].embedding  # Poprawiony dostęp do danych
+        return response['data'][0]['embedding']
     except Exception as e:
         logging.error(f"Error generating embedding: {e}")
         return None
@@ -123,28 +115,23 @@ def chat():
     logging.info(f"Tworzenie promptu dla modelu: {prompt_text[:100]}...")  # Logowanie pierwszych 100 znaków promptu
 
     try:
-        response = client.chat.completions.create(
-            model="o1-mini",
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
             messages=[
                 {
                     "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": prompt_text
-                        },
-                    ],
+                    "content": prompt_text
                 }
             ],
-            max_completion_tokens=2500  # Zwiększenie limitu tokenów
+            max_tokens=2500  # Zwiększenie limitu tokenów
         )
         logging.info(f"Pełna odpowiedź OpenAI: {response}")
 
-        if not response.choices or not response.choices[0].message.content:
+        if not response.choices or not response.choices[0].message['content']:
             logging.error("Brak zawartości w odpowiedzi od modelu.")
             return jsonify({'error': 'Brak odpowiedzi od modelu.'}), 500
 
-        answer = response.choices[0].message.content.strip()
+        answer = response.choices[0].message['content'].strip()
         logging.info(f"Wygenerowano odpowiedź: {answer}")
     except Exception as e:
         logging.error(f"Error generating response: {e}")
@@ -156,24 +143,19 @@ def chat():
 @app.route('/test', methods=['GET'])
 def test():
     try:
-        response = client.chat.completions.create(
-            model="o1-mini",
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
             messages=[
                 {
                     "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": "Cześć, jak się masz?"
-                        },
-                    ],
+                    "content": "Cześć, jak się masz?"
                 }
             ],
-            max_completion_tokens=15000  # Możesz dostosować limit tokenów
+            max_tokens=15000  # Możesz dostosować limit tokenów
         )
-        if not response.choices or not response.choices[0].message.content:
+        if not response.choices or not response.choices[0].message['content']:
             return jsonify({'error': 'Brak odpowiedzi od modelu.'}), 500
-        answer = response.choices[0].message.content.strip()
+        answer = response.choices[0].message['content'].strip()
         return f"<html><body><p>{answer}</p></body></html>"
     except Exception as e:
         logging.error(f"Error during test: {e}")
