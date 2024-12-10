@@ -1,12 +1,16 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, redirect, url_for
 import openai
 import faiss
 import numpy as np
 import os
 import logging
+from dotenv import load_dotenv
 
 # Konfiguracja logowania
 logging.basicConfig(level=logging.INFO)
+
+# Załaduj zmienne środowiskowe z pliku .env (jeśli istnieje)
+load_dotenv()
 
 # Pobierz klucz API OpenAI z zmiennej środowiskowej
 openai_api_key = os.getenv("OPENAI_API_KEY")
@@ -15,9 +19,9 @@ openai_api_key = os.getenv("OPENAI_API_KEY")
 logging.info(f"OPENAI_API_KEY loaded: {'Yes' if openai_api_key else 'No'}")
 
 if not openai_api_key:
-    raise ValueError("Brak klucza API OpenAI. Ustaw zmienną środowiskową OPENAI_API_KEY na Heroku.")
+    raise ValueError("Brak klucza API OpenAI. Ustaw zmienną środowiskową OPENAI_API_KEY.")
 
-# Inicjalizacja klienta OpenAI
+# Ustawienie klucza API dla biblioteki OpenAI
 openai.api_key = openai_api_key
 
 app = Flask(__name__)
@@ -72,6 +76,10 @@ logging.info(f"Liczba fragmentów danych: {len(data_chunks)}")
 if faiss_index:
     logging.info(f"Liczba wektorów w indeksie FAISS: {faiss_index.ntotal}")
 
+@app.route('/', methods=['GET'])
+def home():
+    return "<html><body><h1>Witaj w aplikacji Chat z AI!</h1><p>Użyj endpointów /chat lub /test, aby rozpocząć.</p></body></html>"
+
 @app.route('/chat', methods=['POST'])
 def chat():
     data = request.get_json()
@@ -116,7 +124,7 @@ def chat():
 
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-3.5-turbo",  # Możesz dostosować model
             messages=[
                 {
                     "role": "user",
@@ -127,11 +135,11 @@ def chat():
         )
         logging.info(f"Pełna odpowiedź OpenAI: {response}")
 
-        if not response.choices or not response.choices[0].message['content']:
+        if not response.choices or not response.choices[0].message.content:
             logging.error("Brak zawartości w odpowiedzi od modelu.")
             return jsonify({'error': 'Brak odpowiedzi od modelu.'}), 500
 
-        answer = response.choices[0].message['content'].strip()
+        answer = response.choices[0].message.content.strip()
         logging.info(f"Wygenerowano odpowiedź: {answer}")
     except Exception as e:
         logging.error(f"Error generating response: {e}")
@@ -144,18 +152,18 @@ def chat():
 def test():
     try:
         response = openai.ChatCompletion.create(
-            model="gpt-3.5-turbo",
+            model="gpt-3.5-turbo",  # Możesz dostosować model
             messages=[
                 {
                     "role": "user",
                     "content": "Cześć, jak się masz?"
                 }
             ],
-            max_tokens=15000  # Możesz dostosować limit tokenów
+            max_tokens=150  # Możesz dostosować limit tokenów
         )
-        if not response.choices or not response.choices[0].message['content']:
+        if not response.choices or not response.choices[0].message.content:
             return jsonify({'error': 'Brak odpowiedzi od modelu.'}), 500
-        answer = response.choices[0].message['content'].strip()
+        answer = response.choices[0].message.content.strip()
         return f"<html><body><p>{answer}</p></body></html>"
     except Exception as e:
         logging.error(f"Error during test: {e}")
