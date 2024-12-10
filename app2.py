@@ -32,7 +32,8 @@ def get_embeddings(text, model="text-embedding-ada-002"):
             input=[text],
             model=model
         )
-        return response['data'][0]['embedding']
+        # Użyj notacji kropkowej zamiast indeksowania
+        return response.data[0].embedding
     except Exception as e:
         logging.error(f"Error generating embedding: {e}")
         return None
