@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, redirect, url_for
+from flask import Flask, request, jsonify, redirect, url_for, render_template
 import openai
 import faiss
 import numpy as np
@@ -78,7 +78,7 @@ if faiss_index:
 
 @app.route('/', methods=['GET'])
 def home():
-    return "<html><body><h1>Witaj w aplikacji Chat z AI!</h1><p>Użyj endpointów /chat lub /test, aby rozpocząć.</p></body></html>"
+    return render_template('index.html')
 
 @app.route('/chat', methods=['POST'])
 def chat():
@@ -145,7 +145,7 @@ def chat():
         logging.error(f"Error generating response: {e}")
         return jsonify({'error': 'Nie udało się wygenerować odpowiedzi.'}), 500
 
-    return f"<html><body><p>{answer}</p></body></html>"
+    return jsonify({'answer': answer})
 
 # Endpoint testowy
 @app.route('/test', methods=['GET'])
